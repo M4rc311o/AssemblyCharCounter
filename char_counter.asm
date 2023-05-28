@@ -20,11 +20,12 @@ print:
 	ret
 
 _start:
+	;print input prompt
 	lea rcx, [inPrompt]
 	mov rdx, inPromptLen
 	call print
 	
-	xor r12, r12						;set calle saved register r12 to 0
+	xor r12, r12						;clear char counter
 
 	read_loop:
 	;sys_read from stdin
@@ -32,23 +33,12 @@ _start:
 	mov rdi, 0
 	lea rsi, [buffer]
 	mov rdx, bufferSize
-	syscall
+	syscall	
 
-	;loop through buffer and count charcters
-	xor r8, r8						;set caller saved register r8 to 0
-	buffer_loop:
-	;check for new line
-	cmp byte [buffer + r8], 10
-	je exit_loop
-
-	inc r12
-	inc r8							;increment counter
-
-	;check if whole buffer has been checked
-	cmp r8, bufferSize
-	je read_loop
-
-	jmp buffer_loop
+	add r12, rax						;add input to total char count
+	cmp byte [buffer + rax - 1], 10				;check for end of user input ('\n')
+	jne read_loop
+	dec r12
 
 	exit_loop:
 	xor r8, r8						;clear register for digit counter
@@ -74,10 +64,12 @@ _start:
 	jne digit
 	mov byte [numBuf + r9], 10
 
+	;print output text
 	lea rcx, [outText]
 	mov rdx, outTextLen
 	call print
 
+	;print number of characters
 	lea rcx, [numBuf]
 	mov rdx, r8
 	inc rdx
@@ -92,7 +84,7 @@ _start:
 section .data
 	inPrompt: db  "Write any text and press enter:", 10	;static prompt, append new line
 	inPromptLen: equ $-inPrompt				;get size of prompt
-	outText: db "Number of characters is: "
+	outText: db 10, "Number of characters is: "
 	outTextLen: equ $-outText
 	bufferSize: equ 100					;define buffer size
 
