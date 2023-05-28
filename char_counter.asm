@@ -1,39 +1,54 @@
 global _start
 
 section .text
-_start:
-	;sys_write initial prompt to stdout
+
+;print(byte* text, int length)
+print:
+	;push calee saved registers on stack
+	push rdi						
+	push rsi
+
+	;sys_write
 	mov rax, 1
 	mov rdi, 1
-	lea rsi, [inPrompt]
-	mov rdx, inPromptLen
+	mov rsi, rcx
 	syscall
+
+	;restore calee saved registers
+	pop rsi						
+	pop rdi
+	ret
+
+_start:
+	lea rcx, [inPrompt]
+	mov rdx, inPromptLen
+	call print
 	
 	xor r12, r12						;set calle saved register r12 to 0
 
 	read_loop:
-		;sys_read from stdin
-		mov rax, 0
-		mov rdi, 0
-		lea rsi, [buffer]
-		mov rdx, bufferSize
-		syscall
+	;sys_read from stdin
+	mov rax, 0
+	mov rdi, 0
+	lea rsi, [buffer]
+	mov rdx, bufferSize
+	syscall
 
-		;loop through buffer and count charcters
-		xor r8, r8					;set caller saved register r8 to 0
-		buffer_loop:
-			;check for new line
-			cmp byte [buffer + r8], 10
-			je exit_loop
-			
-			inc r12
-			inc r8					;increment counter
+	;loop through buffer and count charcters
+	xor r8, r8						;set caller saved register r8 to 0
+	buffer_loop:
+	;check for new line
+	cmp byte [buffer + r8], 10
+	je exit_loop
 
-			;check if whole buffer has been checked
-			cmp r8, bufferSize
-			je read_loop
+	inc r12
+	inc r8							;increment counter
 
-			jmp buffer_loop
+	;check if whole buffer has been checked
+	cmp r8, bufferSize
+	je read_loop
+
+	jmp buffer_loop
 
 	exit_loop:
 	xor r8, r8						;clear register for digit counter
@@ -57,20 +72,16 @@ _start:
 	inc r9
 	cmp r8, r9
 	jne digit
+	mov byte [numBuf + r9], 10
 
-	;sys_write output prompt
-	mov rax, 1
-	mov rdi, 1
-	lea rsi, [outPrompt]
-	mov rdx, outPromptLen
-	syscall
+	lea rcx, [outText]
+	mov rdx, outTextLen
+	call print
 
-	;sys_write number of characters
-	mov rax, 1
-	mov rdi, 1
-	lea rsi, [numBuf]
+	lea rcx, [numBuf]
 	mov rdx, r8
-	syscall
+	inc rdx
+	call print
 
 	exit:
 	;sys_exit with code 0	
@@ -81,10 +92,10 @@ _start:
 section .data
 	inPrompt: db  "Write any text and press enter:", 10	;static prompt, append new line
 	inPromptLen: equ $-inPrompt				;get size of prompt
-	outPrompt: db "Number of characters is: "
-	outPromptLen: equ $-outPrompt
+	outText: db "Number of characters is: "
+	outTextLen: equ $-outText
 	bufferSize: equ 100					;define buffer size
 
 section .bss
 	buffer: resb bufferSize
-	numBuf: resb 20
+	numBuf: resb 21
